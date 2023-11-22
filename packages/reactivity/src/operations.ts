@@ -13,3 +13,9 @@ export const enum TriggerOpTypes {
   DELETE = 'delete',
   CLEAR = 'clear'
 }
+
+export const enum EffectState {
+  DIRTY = 'dirty',
+  PAUSED = 'paused',
+  RESUMED = 'resumed'
+}

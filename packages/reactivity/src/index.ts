@@ -71,5 +71,6 @@ export {
 } from './effectScope'
 export {
   TrackOpTypes /* @remove */,
-  TriggerOpTypes /* @remove */
+  TriggerOpTypes /* @remove */,
+  EffectState /* @remove */
 } from './operations'

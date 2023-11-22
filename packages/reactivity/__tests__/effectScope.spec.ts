@@ -296,4 +296,64 @@ describe('reactivity/effect/scope', () => {
       expect(getCurrentScope()).toBe(parentScope)
     })
   })
+
+  it('pause/resume should work', async () => {
+    const scope = new EffectScope()
+    const counter = reactive({ num: 0 })
+
+    const watchSpy = vi.fn()
+    const watchEffectSpy = vi.fn()
+    const nestedEffectSpy = vi.fn()
+
+    let dummy, doubled
+    scope.run(() => {
+      effect(() => (dummy = counter.num))
+
+      watch(counter, watchSpy)
+      watchEffect(() => {
+        counter.num
+        watchEffectSpy()
+      })
+      // nested scope
+      new EffectScope().run(() => {
+        effect(() => {
+          doubled = counter.num * 2
+          nestedEffectSpy()
+        })
+      })
+    })
+
+    expect(dummy).toBe(0)
+    expect(doubled).toBe(0)
+    expect(watchSpy).toHaveBeenCalledTimes(0)
+    expect(watchEffectSpy).toHaveBeenCalledTimes(1)
+    expect(nestedEffectSpy).toHaveBeenCalledTimes(1)
+
+    counter.num++
+    expect(dummy).toBe(1)
+    expect(doubled).toBe(2)
+    expect(nestedEffectSpy).toHaveBeenCalledTimes(2)
+    await nextTick()
+    expect(watchSpy).toHaveBeenCalledTimes(1)
+    expect(watchEffectSpy).toHaveBeenCalledTimes(2)
+
+    scope.pause()
+
+    counter.num++
+    expect(dummy).toBe(1)
+    expect(doubled).toBe(2)
+    expect(nestedEffectSpy).toHaveBeenCalledTimes(2)
+    await nextTick()
+    expect(watchSpy).toHaveBeenCalledTimes(1)
+    expect(watchEffectSpy).toHaveBeenCalledTimes(2)
+
+    scope.resume()
+
+    expect(dummy).toBe(2)
+    expect(doubled).toBe(4)
+    expect(nestedEffectSpy).toHaveBeenCalledTimes(3)
+    await nextTick()
+    expect(watchSpy).toHaveBeenCalledTimes(2)
+    expect(watchEffectSpy).toHaveBeenCalledTimes(3)
+  })
 })

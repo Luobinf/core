@@ -1,4 +1,4 @@
-import { TrackOpTypes, TriggerOpTypes } from './operations'
+import { TrackOpTypes, TriggerOpTypes, EffectState } from './operations'
 import { extend, isArray, isIntegerKey, isMap, isSymbol } from '@vue/shared'
 import { EffectScope, recordEffectScope } from './effectScope'
 import {
@@ -69,6 +69,8 @@ export class ReactiveEffect<T = any> {
    */
   private deferStop?: boolean
 
+  effectState = EffectState.RESUMED
+
   onStop?: () => void
   // dev only
   onTrack?: (event: DebuggerEvent) => void
@@ -135,6 +137,30 @@ export class ReactiveEffect<T = any> {
         this.onStop()
       }
       this.active = false
+    }
+  }
+
+  update() {
+    if (activeEffect !== this || this.allowRecurse) {
+      if (this.effectState !== EffectState.RESUMED) {
+        this.effectState = EffectState.DIRTY
+      } else {
+        this.scheduler ? this.scheduler() : this.run()
+      }
+    }
+  }
+
+  pause() {
+    if (this.effectState !== EffectState.DIRTY) {
+      this.effectState = EffectState.PAUSED
+    }
+  }
+
+  resume(ignoreDirty = false) {
+    const lastEffectState = this.effectState
+    this.effectState = EffectState.RESUMED
+    if (!ignoreDirty && lastEffectState === EffectState.DIRTY) {
+      this.scheduler ? this.scheduler() : this.run()
     }
   }
 }
@@ -416,11 +442,7 @@ function triggerEffect(
     if (__DEV__ && effect.onTrigger) {
       effect.onTrigger(extend({ effect }, debuggerEventExtraInfo))
     }
-    if (effect.scheduler) {
-      effect.scheduler()
-    } else {
-      effect.run()
-    }
+    effect.update()
   }
 }
 
